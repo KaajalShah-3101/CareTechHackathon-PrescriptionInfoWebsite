@@ -116,6 +116,12 @@ def check():
             result['min_dose_mg'] = result.pop('guideline_min_mg')
         if 'guideline_max_mg' in result:
             result['max_dose_mg'] = result.pop('guideline_max_mg')
+        
+        # Ensure min <= max (swap if needed)
+        if 'min_dose_mg' in result and 'max_dose_mg' in result:
+            if result['min_dose_mg'] > result['max_dose_mg']:
+                result['min_dose_mg'], result['max_dose_mg'] = result['max_dose_mg'], result['min_dose_mg']
+        
         return ok(result)
     except Exception as e:
         traceback.print_exc()
