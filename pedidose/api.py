@@ -17,8 +17,8 @@ import traceback
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-from config import API_HOST, API_PORT, API_RELOAD
-from model import check_dose, is_model_ready, get_supported_drugs
+from .config import API_HOST, API_PORT, API_RELOAD
+from .model import check_dose, is_model_ready, get_supported_drugs
 
 app = Flask(__name__)
 CORS(app)   # allows your HTML page to call this server
