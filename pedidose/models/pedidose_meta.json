@@ -1,0 +1,18 @@
+{
+  "drugs": [
+    "amlodipine",
+    "amoxicillin",
+    "ibuprofen"
+  ],
+  "feature_cols": [
+    "age_years",
+    "weight_kg",
+    "bmi",
+    "chronic_flag",
+    "had_adverse",
+    "is_female",
+    "effective_score"
+  ],
+  "accuracy": 32.2,
+  "note": "Model predicts recommended drug. Dosage safety uses clinical guidelines (mg/kg)."
+}
