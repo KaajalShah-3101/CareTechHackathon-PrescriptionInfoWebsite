@@ -335,15 +335,16 @@
           <option value="other">Other / Prefer not to say</option>
         </select>
       </div>
-      <div class="field">
-        <label for="condition">Condition (optional)</label>
-        <input type="text" id="condition" placeholder="e.g. hypertension">
-      </div>
     </div>
 
     <div class="field-full field">
-      <label for="medication">Medication Name</label>
-      <input type="text" id="medication" placeholder="e.g. Ibuprofen" autocomplete="off">
+      <label for="medication">Medication</label>
+      <select id="medication">
+        <option value="">— Select a medication —</option>
+        <option value="amoxicillin">Amoxicillin</option>
+        <option value="amlodipine">Amlodipine</option>
+        <option value="ibuprofen">Ibuprofen</option>
+      </select>
     </div>
 
     <div class="error-msg" id="patientError"></div>
@@ -407,36 +408,43 @@
   // ─────────────────────────────────────────────────────────────────
   //  API CONFIG — point this at your Flask server
   // ─────────────────────────────────────────────────────────────────
-  const API_BASE = 'http://localhost:5000';
+  const API_BASE = '';  // Use relative URLs (same server)
 
   /*
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║  FLASK ENDPOINT CONTRACT                                          ║
+  ║  FLASK ENDPOINT CONTRACT (PediDose)                              ║
   ║                                                                   ║
-  ║  POST /api/dosage                                                 ║
+  ║  POST /api/check                                                  ║
   ║                                                                   ║
   ║  Request JSON body:                                               ║
   ║  {                                                                ║
-  ║    "medication": "ibuprofen",   // string, required               ║
-  ║    "weight":     70,            // number (kg), required          ║
-  ║    "age":        35,            // number (years), required       ║
-  ║    "sex":        "male",        // "male"|"female"|"other"        ║
-  ║    "condition":  "headache"     // string, optional               ║
+  ║    "drug":           "amoxicillin", // string, required           ║
+  ║    "weight_kg":      25,            // number (kg), required      ║
+  ║    "age_years":      5,             // number (years), required   ║
+  ║    "prescribed_mg":  200,           // number (mg), required      ║
+  ║    "bmi":            15.2,          // number, optional           ║
+  ║    "chronic":        false,         // boolean, optional          ║
+  ║    "adverse":        false,         // boolean, optional          ║
+  ║    "female":         false          // boolean, optional          ║
   ║  }                                                                ║
   ║                                                                   ║
   ║  Expected success response (HTTP 200):                            ║
   ║  {                                                                ║
-  ║    "medication":        "Ibuprofen",   // display name            ║
-  ║    "min_dose":          200,           // number, mg              ║
-  ║    "max_dose":          800,           // number, mg              ║
-  ║    "recommended_dose":  400,           // number, mg              ║
-  ║    "unit":              "mg",          // string                  ║
-  ║    "condition":         "Pain Relief", // string, optional        ║
-  ║    "notes":             "Take with food." // string, optional     ║
+  ║    "success": true,                                               ║
+  ║    "data": {                                                      ║
+  ║      "drug":            "amoxicillin",  // display name           ║
+  ║      "status":          "safe",         // "safe"|"overdose"|..  ║
+  ║      "color":           "green",        // "green"|"red"|"yellow" ║
+  ║      "message":         "...",          // human readable         ║
+  ║      "min_dose_mg":     50,             // number, mg             ║
+  ║      "max_dose_mg":     100,            // number, mg             ║
+  ║      "dose_range_info": "...",          // string                 ║
+  ║      "confidence":      0.85            // 0.0-1.0               ║
+  ║    }                                                              ║
   ║  }                                                                ║
   ║                                                                   ║
-  ║  Error response (HTTP 400 / 404):                                 ║
-  ║  { "error": "Medication not found in dataset" }                   ║
+  ║  Error response (HTTP 400 / 404 / 503):                           ║
+  ║  { "success": false, "error": "..." }                             ║
   ╚═══════════════════════════════════════════════════════════════════╝
   */
 
@@ -445,8 +453,7 @@
   async function fetchDosage() {
     const weight     = parseFloat(document.getElementById('weight').value);
     const age        = parseFloat(document.getElementById('age').value);
-    const sex        = document.getElementById('sex').value;
-    const condition  = document.getElementById('condition').value.trim();
+    const female     = document.getElementById('sex').value === 'female';
     const medication = document.getElementById('medication').value.trim();
     const errEl      = document.getElementById('patientError');
 
@@ -462,18 +469,24 @@
     btn.disabled = true;
 
     try {
-      const res = await fetch(`${API_BASE}/api/dosage`, {
+      const res = await fetch(`${API_BASE}/api/check`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ medication, weight, age, sex, condition })
+        body:    JSON.stringify({
+          drug: medication,
+          weight_kg: weight,
+          age_years: age,
+          prescribed_mg: 0,  // Will be set when checking dose
+          female: female
+        })
       });
 
-      const data = await res.json();
+      const response = await res.json();
 
-      if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
+      if (!response.success) throw new Error(response.error || `Server error (${res.status})`);
 
-      doseData = data;
-      populateDosageCard(data);
+      doseData = response.data;
+      populateDosageCard(doseData);
 
     } catch (err) {
       showError(errEl, `Could not retrieve dosage data: ${err.message}`);
@@ -484,15 +497,14 @@
   }
 
   function populateDosageCard(data) {
-    const unit = data.unit || 'mg';
+    const unit = 'mg';
 
-    document.getElementById('displayMin').textContent = `${data.min_dose} ${unit}`;
-    document.getElementById('displayMax').textContent = `${data.max_dose} ${unit}`;
-    document.getElementById('displayRec').textContent = `${data.recommended_dose} ${unit}`;
+    document.getElementById('displayMin').textContent = `${data.min_dose_mg} ${unit}`;
+    document.getElementById('displayMax').textContent = `${data.max_dose_mg} ${unit}`;
+    document.getElementById('displayRec').textContent = `${Math.round((data.min_dose_mg + data.max_dose_mg) / 2)} ${unit}`;
 
-    document.getElementById('metaMedName').textContent = data.medication;
-    const noteParts = [data.condition, data.notes].filter(Boolean).join(' · ');
-    document.getElementById('metaNotes').textContent = noteParts;
+    document.getElementById('metaMedName').textContent = data.drug.charAt(0).toUpperCase() + data.drug.slice(1);
+    document.getElementById('metaNotes').textContent = data.dose_range_info || 'Pediatric dosage range';
     document.getElementById('medMeta').style.display = 'block';
 
     document.getElementById('cardDosage').classList.remove('locked');
@@ -505,7 +517,7 @@
     document.getElementById('cardDosage').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  function checkDose() {
+  async function checkDose() {
     if (!doseData) return;
 
     const prescribed = parseFloat(document.getElementById('prescribed').value);
@@ -517,24 +529,39 @@
       return;
     }
 
-    const { min_dose, max_dose, recommended_dose, unit = 'mg', medication } = doseData;
+    // Call API with prescribed dose
+    try {
+      const weight     = parseFloat(document.getElementById('weight').value);
+      const age        = parseFloat(document.getElementById('age').value);
+      const female     = document.getElementById('sex').value === 'female';
+      const medication = document.getElementById('medication').value.trim();
 
-    if (prescribed > max_dose) {
-      const over = round(prescribed - max_dose);
-      setStatus('high', '⚠️', 'DOSE TOO HIGH',
-        `${prescribed} ${unit} exceeds the maximum safe dose of ${max_dose} ${unit} by ${over} ${unit}. Please review before administering.`);
-      document.body.className = 'state-high';
+      const res = await fetch(`${API_BASE}/api/check`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          drug: medication,
+          weight_kg: weight,
+          age_years: age,
+          prescribed_mg: prescribed,
+          female: female
+        })
+      });
 
-    } else if (prescribed < min_dose) {
-      const under = round(min_dose - prescribed);
-      setStatus('low', '⚡', 'DOSE BELOW MINIMUM',
-        `${prescribed} ${unit} is ${under} ${unit} below the minimum effective dose of ${min_dose} ${unit}. This may be ineffective.`);
+      const response = await res.json();
+      if (!response.success) throw new Error(response.error);
+
+      const data = response.data;
+      const colorMap = { 'green': 'safe', 'red': 'high', 'yellow': 'low' };
+      const statusType = colorMap[data.color] || 'safe';
+      const iconMap = { 'safe': '✓', 'high': '⚠️', 'low': '⚡' };
+
+      setStatus(statusType, iconMap[statusType], data.status.toUpperCase(), data.message);
+      document.body.className = `state-${statusType}`;
+
+    } catch (err) {
+      setStatus('safe', '⚠️', 'ERROR', `Could not validate dose: ${err.message}`);
       document.body.className = 'state-low';
-
-    } else {
-      setStatus('safe', '✓', 'DOSE WITHIN SAFE RANGE',
-        `${prescribed} ${unit} of ${medication} is within the acceptable range of ${min_dose}–${max_dose} ${unit}. Recommended dose is ${recommended_dose} ${unit}.`);
-      document.body.className = 'state-safe';
     }
   }
 

@@ -19,7 +19,7 @@ What this file knows about the dataset:
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from config import CSV_PATH, PEDIATRIC_GUIDELINES
+from .config import CSV_PATH, PEDIATRIC_GUIDELINES
 
 
 def load_clean_data(csv_path: Path = CSV_PATH) -> pd.DataFrame:

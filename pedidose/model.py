@@ -41,8 +41,8 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import LabelEncoder, MultiLabelBinarizer
 from sklearn.metrics import accuracy_score, classification_report
 
-from config import MODEL_PATH, META_PATH, CSV_PATH, PEDIATRIC_GUIDELINES
-from data_loader import load_clean_data
+from .config import MODEL_PATH, META_PATH, CSV_PATH, PEDIATRIC_GUIDELINES
+from .data_loader import load_clean_data
 
 warnings.filterwarnings("ignore")
 
