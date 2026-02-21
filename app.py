@@ -2,19 +2,23 @@
 from flask import Flask, request, jsonify
 import pandas as pd
 from flask_cors import CORS
+import os
 
 app = Flask(__name__)
 CORS(app)  # Enable cross-origin requests for frontend
 
 # ─── Load the dataset ───
-# Assume you downloaded the CSV from Kaggle and saved it as 'medication_dataset.csv'
-df = pd.read_csv('personalized_medication_dataset.csv')
+BASE_DIR = os.path.dirname(__file__)  # folder containing app.py
+DATA_PATH = os.path.join(BASE_DIR, 'pedidose', 'data', 'personalized_medication_dataset.csv')
+
+# Load the dataset
+df = pd.read_csv(DATA_PATH)
 
 # Normalize column names for easier access
 df.columns = [col.lower().strip() for col in df.columns]
 
 # Example relevant columns from the dataset:
-# 'med_name', 'min_dose_mg', 'max_dose_mg', 'recommended_dose_mg', 'condition', 'notes'
+# 'Recommended_Medication', 'min_dose_mg', 'max_dose_mg', 'recommended_dose_mg', 'condition', 'notes'
 
 @app.route('/api/dosage', methods=['POST'])
 def get_dosage():
@@ -30,7 +34,7 @@ def get_dosage():
         return jsonify({'error': 'Medication, weight, and age are required'}), 400
 
     # Lookup medication in dataset
-    med_row = df[df['med_name'].str.lower() == medication]
+    med_row = df[df['Recommended_Medication'].str.lower() == medication]
 
     if med_row.empty:
         return jsonify({'error': 'Medication not found in dataset'}), 404
