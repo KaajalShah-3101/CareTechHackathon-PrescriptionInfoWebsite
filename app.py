@@ -8,7 +8,7 @@ CORS(app)  # Enable cross-origin requests for frontend
 
 # ─── Load the dataset ───
 # Assume you downloaded the CSV from Kaggle and saved it as 'medication_dataset.csv'
-df = pd.read_csv('medication_dataset.csv')
+df = pd.read_csv('personalized_medication_dataset.csv')
 
 # Normalize column names for easier access
 df.columns = [col.lower().strip() for col in df.columns]
